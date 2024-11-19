@@ -1,4 +1,5 @@
 import collections
+import math
 from typing import Callable, List, Tuple
 
 import torch
@@ -48,16 +49,16 @@ class SRResNetEncoder(nn.Module):
         blocks_list: List[nn.Module] = []
 
         # first conv
-        first_conv = nn.Sequential(
-            conv(in_channels, num_features), activation()
-        )
+        first_conv = nn.Sequential(conv(in_channels, num_features), activation())
         blocks_list.append(first_conv)
 
         # basic blocks - sequence of B residual blocks
         for _ in range(num_basic_blocks):
             basic_block = nn.Sequential(
                 conv(num_features, num_features),
-                norm(num_features,),
+                norm(
+                    num_features,
+                ),
                 activation(),
                 conv(num_features, num_features),
                 norm(num_features),
@@ -66,7 +67,8 @@ class SRResNetEncoder(nn.Module):
 
         # last conv of the encoder
         last_conv = nn.Sequential(
-            conv(num_features, out_channels), norm(out_channels),
+            conv(num_features, out_channels),
+            norm(out_channels),
         )
         blocks_list.append(last_conv)
 
@@ -116,25 +118,28 @@ class SRResNetDecoder(nn.Module):
         in_channels: int = 64,
         out_channels: int = 3,
         scale_factor: int = 2,
+        upsampling_base: int = 2,
         conv: Callable[..., nn.Module] = modules.Conv2d,
         activation: Callable[..., nn.Module] = nn.PReLU,
     ) -> None:
         super().__init__()
 
         # check params
-        if utils.is_power_of_two(scale_factor):
+        res = math.log(upsampling_base) / math.log(scale_factor)
+        if res != math.floor(res):
             raise NotImplementedError(
-                f"scale_factor should be power of 2, got {scale_factor}"
+                f"scale_factor should be power of {upsampling_base}, got {scale_factor}"
             )
 
         blocks_list: List[Tuple[str, nn.Module]] = []
 
         # upsampling
-        for i in range(scale_factor // 2):
+        for i in range(scale_factor // upsampling_base):
             upsampling_block = modules.SubPixelConv(
                 num_features=in_channels,
                 conv=conv,
                 activation=activation,
+                scale_factor=upsampling_base,
             )
             blocks_list.append((f"upsampling_{i}", upsampling_block))
 

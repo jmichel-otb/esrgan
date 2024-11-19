@@ -43,7 +43,7 @@ class SubPixelConv(nn.Module):
         super().__init__()
 
         self.block = nn.Sequential(
-            conv(num_features, num_features * 4),
+            conv(num_features, num_features * scale_factor * scale_factor),
             nn.PixelShuffle(upscale_factor=scale_factor),
             activation(),
         )
@@ -83,9 +83,10 @@ class InterpolateConv(nn.Module):
         scale_factor: int = 2,
         conv: Callable[..., nn.Module] = Conv2d,
         activation: Callable[..., nn.Module] = LeakyReLU,
+        mode="nearest",
     ) -> None:
         super().__init__()
-
+        self.mode = mode
         self.scale_factor = scale_factor
         self.block = nn.Sequential(
             conv(num_features, num_features),
@@ -102,7 +103,7 @@ class InterpolateConv(nn.Module):
             Upscaled data.
 
         """
-        x = F.interpolate(x, scale_factor=self.scale_factor, mode="nearest")
+        x = F.interpolate(x, scale_factor=self.scale_factor, mode=self.mode)
         output = self.block(x)
 
         return output

@@ -1,4 +1,5 @@
 import collections
+import math
 from typing import Callable, List, Tuple
 
 import torch
@@ -118,25 +119,28 @@ class ESRNetDecoder(nn.Module):
         in_channels: int = 64,
         out_channels: int = 3,
         scale_factor: int = 2,
+        upsampling_base: int = 2,
         conv: Callable[..., nn.Module] = modules.Conv2d,
         activation: Callable[..., nn.Module] = modules.LeakyReLU,
     ) -> None:
         super().__init__()
 
         # check params
-        if utils.is_power_of_two(scale_factor):
+        res = math.log(scale_factor) / math.log(upsampling_base)
+        if res != math.floor(res):
             raise NotImplementedError(
-                f"scale_factor should be power of 2, got {scale_factor}"
+                f"scale_factor should be power of {upsampling_base}, got {scale_factor}"
             )
 
         blocks_list: List[Tuple[str, nn.Module]] = []
 
         # upsampling
-        for i in range(scale_factor // 2):
+        for i in range(scale_factor // upsampling_base):
             upsampling_block = modules.InterpolateConv(
                 num_features=in_channels,
                 conv=conv,
                 activation=activation,
+                scale_factor=upsampling_base,
             )
             blocks_list.append((f"upsampling_{i}", upsampling_block))
 
